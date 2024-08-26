@@ -33,6 +33,13 @@ class Player[T: Position]:
 
         return cls(**__d)
 
+    def to_dict(self) -> dict[str, str]:
+        return {
+            'name': self.name,
+            'team': self.team,
+            'position': self.position.name,
+        }
+
     @classmethod
     def from_json(cls, __x: str) -> list["Player"]:
         j: list[dict[str, str]] = json.loads(__x)
@@ -50,15 +57,22 @@ class PlayerComparison:
     left: Player
     right: Player
     difference: float
+    strength: float = 1.0
 
     def __hash__(self):
-        return hash((self.left, self.right, self.difference))
+        return hash((self.left, self.right, self.difference, self.strength))
 
 
 @dataclass
 class PlayerScore:
     player: Player
     score: float = 0.0
+
+    def to_dict(self) -> dict[str, str | float]:
+        return {
+            **self.player.to_dict(),
+            'score': self.score,
+        }
 
     def __hash__(self):
         return hash((self.player, self.score))
