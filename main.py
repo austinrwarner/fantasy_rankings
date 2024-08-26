@@ -1,3 +1,5 @@
+import itertools
+import json
 import math
 from pathlib import Path
 import random
@@ -7,7 +9,7 @@ from labrea import dataset, Option
 from player import Player, PlayerComparison, PlayerScore, Position
 
 
-_MAGNITUDES = {"1": 1, "2": 2, "3": 4, "4": 8, "5": 16, "6": 32}
+_MAGNITUDES = {"1": 32, "2": 48, "3": 72, "4": 108, "5": 162, "6": 253}
 
 
 @dataset
@@ -54,22 +56,22 @@ def _compare_players(p1: Player, p2: Player) -> PlayerComparison:
 def rank_player(
         player: Player,
         ranked: list[Player],
+        quantile: float = 0.5
 ) -> tuple[list[Player], list[PlayerComparison]]:
     if len(ranked) == 0:
         return [player], []
-
-    pivot_index = len(ranked) // 2
+    pivot_index = min(int(len(ranked) * (1-quantile)), len(ranked) - 1)
     better, pivot, worse = ranked[:pivot_index], ranked[pivot_index], ranked[pivot_index+1:]
 
     comp = _compare_players(player, pivot)
 
     if comp.difference >= 0:
         better, comps = rank_player(
-            player, better,
+            player, better, comp.difference / max(_MAGNITUDES.values())
         )
     else:
         worse, comps = rank_player(
-            player, worse,
+            player, worse, 1 + comp.difference / max(_MAGNITUDES.values())
         )
 
     return better + [pivot] + worse, [comp] + comps
@@ -102,7 +104,7 @@ def scored_players(
     def _force(c: PlayerComparison) -> float:
         equilibrium = c.difference
         current = player_scores[c.left] - player_scores[c.right]
-        return current - equilibrium
+        return (current - equilibrium) * c.strength
 
     last_loss = math.inf
     loss = 0.0
@@ -125,3 +127,16 @@ def scored_players(
         key=lambda p: -p.score
     )
 
+
+def main():
+    position = "RB"
+    n = 36
+
+    ranks = rankings({'POSITION': position, 'N': n})
+
+    with open(f'{position}_rankings.json', 'w') as file:
+        json.dump([player.to_dict() for player in ranks], file, indent=2)
+
+
+if __name__ == '__main__':
+    main()
